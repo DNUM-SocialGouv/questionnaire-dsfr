@@ -1,4 +1,3 @@
-```
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Baromètre numérique 2026</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.0/dist/dsfr.min.css"><style>
 body{background:#fff;color:#161616;font-family:Marianne,arial,sans-serif}.shell{max-width:880px;margin:auto;padding:28px 20px 80px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid #ddd;padding:20px 0}.brand{font-weight:700;font-size:1.1rem}.tag{font-size:.8rem;color:#666}.panel{background:#fff;min-height:420px;margin-top:12px;padding:24px 0}.kicker{color:#000091;font-weight:700;margin-bottom:12px}.question{font-size:clamp(1.5rem,3vw,2.3rem);line-height:1.3;margin-bottom:30px}.choices{display:grid;gap:12px}.choice{display:flex;align-items:center;gap:15px;text-align:left;padding:18px 20px;border:1px solid #929292;background:#fff;cursor:pointer;font:inherit;min-height:58px}.choice:hover{background:#f5f5fe}.choice[aria-pressed=true]{outline:3px solid #000091;background:#e3e3fd;border-color:#000091}.letter{background:#eeeefa;color:#000091;padding:4px 10px;font-weight:bold}.actions{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-top:28px;flex-wrap:wrap}.progress{display:none}.fill{display:none}.hint{font-size:.88rem;color:#666}.hidden{display:none}textarea{width:100%;min-height:130px;padding:14px;border:1px solid #929292;border-bottom:2px solid #161616;background:#f6f6f6;font:inherit}button:focus-visible,textarea:focus-visible{outline:3px solid #0a76f6;outline-offset:3px}.review{padding-left:20px}.review li{margin-bottom:16px}.review strong{display:block}footer{font-size:.85rem;color:#666;margin-top:25px}@media(prefers-reduced-motion:reduce){.fill{transition:none}}.card-choices{border:0;padding:0;margin:0;display:grid;gap:12px}.card-option{position:relative}.card-option input{position:absolute;width:1px;height:1px;opacity:0}.card-option label{display:flex;align-items:center;gap:16px;border:1px solid #929292;padding:17px 20px;cursor:pointer;min-height:62px;background:#fff}.card-option label:hover{background:#f5f5fe}.card-option input:checked+label{outline:2px solid #000091;background:#e3e3fd;border-color:#000091}.card-option input:focus-visible+label{outline:3px solid #0a76f6;outline-offset:3px}.card-option .letter{min-width:36px;text-align:center;background:#eeeefa;color:#000091;padding:4px 10px;font-weight:bold}@media(max-width:700px){.fr-header__body-row{align-items:flex-start}.fr-header__service-title{font-size:1rem}.fr-header__service-tagline{font-size:.95rem}.fr-header__logo .fr-logo{font-size:.9rem}} 
 /* Conserve le bloc-marque officiel sans en redimensionner le logo. */
@@ -87,6 +86,38 @@ html{overflow-anchor:none}
 let editorial={"Titre":"Baromètre numérique 2026","Introduction":"Aidez-nous à améliorer votre accompagnement en 2 à 3 minutes.\n\nCe baromètre vise à identifier ce qui fonctionne, repérer les améliorations prioritaires et orienter les actions de 2027.","Texte_fin":"Vos réponses ont bien été enregistrées. Ensemble, améliorons votre quotidien numérique !","Intro_titre":"Votre quotidien numérique nous intéresse !","Fin_titre":"Merci pour votre participation !","Etape_1":"Vos réponses analysées\nNous regroupons les réponses pour identifier ce qui fonctionne et les difficultés rencontrées au quotidien.","Etape_2":"Des priorités pour 2027\nVos retours nous aideront à définir les améliorations à apporter aux outils et à l’accompagnement numérique.","Etape_3":"Un bilan partagé\nUn bilan des résultats et des suites données sera partagé via l’intranet ou la newsletter. La date sera précisée ultérieurement.","Mention_accueil":""};
 let editorialPromise=null;
 let alreadyParticipated=false;
+let participationCheckFailed=false;
+let participationCheckPromise=null;
+// Une table de synthèse Statut_participation expose uniquement le compte et
+// l’année de participation de l’agent connecté ; Resultats reste privé.
+// Ne jamais utiliser cette lecture pour autoriser ou refuser un envoi :
+// l'unicité reste imposée par la règle ACL sur AddRecord.
+async function checkExistingParticipation(){
+  if(!participationCheckPromise){
+    participationCheckPromise=(async()=>{
+      try{
+        // Une synthèse Grist de Resultats groupée par Compte_id et Annee
+        // porte un identifiant automatique (non renommable dans Grist).
+        const tableIds=await grist.docApi.listTables();
+        const isStatusSummary=name=>name.startsWith('Resultats_summary_')
+          &&name.includes('Compte_id')&&name.includes('Annee');
+        const tableId=tableIds.find(isStatusSummary);
+        if(!tableId)throw new Error('Synthèse des participations absente');
+        const participation=await grist.docApi.fetchTable(tableId);
+        if(!Array.isArray(participation.Annee))throw new Error('Année indisponible');
+        // Les ACL filtrent les lignes de cette synthèse sur user.UserID.
+        // Tester avec un agent éditeur : les propriétaires voient toutes les lignes.
+        alreadyParticipated=participation.Annee.some(year=>Number(year)===campaignYear);
+      }catch(e){
+        // Défaut de lecture : ne pas prétendre que l'agent n'a jamais répondu.
+        // On conserve le contrôle serveur lors de l'enregistrement.
+        participationCheckFailed=true;
+      }
+    })();
+  }
+  return participationCheckPromise;
+}
+
 async function loadEditorial(){if(!editorialPromise)editorialPromise=(async()=>{const t=await grist.docApi.fetchTable("Questionnaires");const i=t.Annee.findIndex(y=>Number(y)===campaignYear);if(i<0)throw new Error("Textes de campagne introuvables.");for(const k of Object.keys(editorial)){if(t[k]&&String(t[k][i]||"").trim())editorial[k]=String(t[k][i]);}document.title=editorial.Titre;})();return editorialPromise;}
 let qs=["Au fil du temps, mon quotidien numérique s'améliore", "Quand j’ai besoin d’assistance ou de formation je sais où trouver les ressources ou les contacts", "Quand j’ai un besoin ou une difficulté avec mes logiciels ou mon matériel, l’assistance est efficace pour m’aider", "Les outils de travail collaboratif (messagerie instantanée, visioconférence, partage de documents...) sont adaptés à mes besoins", "Les applicatifs métiers que j’utilise sont performants et facilitent mon travail", "Je comprends les exigences de sécurité numérique (accès, mots de passe, protections)", "Les ministères sociaux agissent pour un numérique plus responsable (réemploi des équipements, économie d’énergie...)", "Les outils d’IA mis à ma disposition sont efficaces et utiles pour mon travail", "Si j’ai à exploiter des données, je dispose des bons outils pour le faire", "Pour finir : quelle serait LA PRIORITÉ à améliorer dans votre quotidien numérique en 2027 ?"], choices=["Tout à fait d'accord", "Plutôt d'accord", "Plutôt pas d'accord", "Pas du tout d'accord", "Je ne suis pas concerné(e)"];let step=-1;let answers=Array(qs.length).fill(null),panel=document.getElementById('panel');
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -94,6 +125,7 @@ function btn(label,handler,secondary=false){let b=document.createElement('button
 // Fondu très discret : aucune navigation ou défilement automatique.
 let transitionToken=0;
 function go(n){
+  if(alreadyParticipated && n<=qs.length){step=qs.length+1;render();return;}
   if(n===0 && !window.currentQuestions){alert('Les questions sont en cours de chargement.');return;}
   if(step>=0&&step<qs.length&&n>step&&isRequired(window.currentQuestions?.[step]||{})&&isEmpty(answers[step])){alert('Cette question est obligatoire.');return;}
   const token=++transitionToken;
@@ -193,7 +225,8 @@ window.currentQuestions=null;
 if(typeof grist!=='undefined'){
  grist.ready({requiredAccess:'full'});
  grist.onRecords(async function(records){
-  try{await loadEditorial();}catch(error){panel.innerHTML='<h1 class="fr-h4">Le questionnaire est momentanément indisponible</h1><p>Veuillez réessayer dans quelques instants.</p>';return;}
+  try{await Promise.all([loadEditorial(),checkExistingParticipation()]);}catch(error){panel.innerHTML='<h1 class="fr-h4">Le questionnaire est momentanément indisponible</h1><p>Veuillez réessayer dans quelques instants.</p>';return;}
+  if(alreadyParticipated){step=qs.length+1;render();return;}
   const rows=(records||[]).filter(r=>r&&String(r.Intitule||'').trim()&&Number(r.Annee)===campaignYear).sort((a,b)=>Number(a.Ordre||0)-Number(b.Ordre||0));
   if(!rows.length){window.currentQuestions=null;panel.innerHTML='<h1 class="fr-h4">Aucune question disponible pour cette édition</h1>';return;}
   const signature=JSON.stringify(rows.map(r=>[r.id,r.Code,r.Intitule,r.Type_reponse,r.Obligatoire,r.Max_caracteres,r.Annee]));
@@ -209,6 +242,13 @@ function render(){
   const symbol=panel.querySelector('.welcome-symbol')?.outerHTML||'';
   panel.innerHTML=symbol+'<p class="kicker">Votre avis compte</p><h1 class="question">'+esc(editorial.Intro_titre)+'</h1><div class="intro-copy">'+paragraphs(editorial.Introduction)+'</div>';
   const start=btn('Commencer le questionnaire',()=>go(0));start.disabled=!window.currentQuestions;panel.append(start);
+  if(participationCheckFailed){
+    const alert=document.createElement('div');
+    alert.className='fr-alert fr-alert--info fr-mt-3w';
+    alert.setAttribute('role','status');
+    alert.innerHTML='<p>Nous n’avons pas pu vérifier si vous aviez déjà participé. Vous pouvez continuer : Grist vérifiera votre participation lors de l’envoi.</p>';
+    panel.append(alert);
+  }
   if(String(editorial.Mention_accueil||'').trim()){
     const note=document.createElement('div');note.className='participation-note';note.innerHTML=paragraphs(editorial.Mention_accueil);panel.append(note);
   }
@@ -219,8 +259,13 @@ function render(){
   qs.forEach((q,i)=>{const item=document.createElement('li');item.className='review-item';const top=document.createElement('div');top.className='review-item__top';const num=document.createElement('p');num.className='review-item__number';num.textContent='Question '+(i+1)+' sur '+qs.length;const edit=btn('Modifier',()=>go(i),true);edit.classList.add('review-edit');edit.setAttribute('aria-label','Modifier ma réponse à la question '+(i+1));top.append(num,edit);const title=document.createElement('h2');title.className='review-item__question';title.textContent=q;const answer=document.createElement('div');answer.className='review-answer'+(isEmpty(answers[i])?' review-answer--empty':questionIsText(i)?' review-answer--text':'');answer.textContent=isEmpty(answers[i])?'Sans réponse':answers[i];item.append(top,title,answer);list.append(item);});panel.append(list);
   const actions=document.createElement('div');actions.className='actions';actions.append(btn('Envoyer ma contribution',submitTest));panel.append(actions);
  }
- if(step>qs.length){
-  const symbol=panel.querySelector('.end-symbol')?.outerHTML||'';
+  if(step>qs.length){
+   if(alreadyParticipated){
+     const symbol=panel.querySelector('.end-symbol')?.outerHTML||'';
+     panel.innerHTML=symbol+'<p class="kicker">Participation déjà enregistrée</p><h1 class="question">Vous avez déjà participé au Baromètre numérique '+campaignYear+'</h1><p class="confirmation-lead">Votre contribution a bien été enregistrée. Merci d’avoir pris le temps de partager votre expérience !</p><p>Les résultats de cette édition vous seront communiqués prochainement.</p>';
+     return;
+   }
+   const symbol=panel.querySelector('.end-symbol')?.outerHTML||'';
   panel.innerHTML=symbol+'<p class="kicker">'+(alreadyParticipated?'Participation déjà enregistrée':'Contribution enregistrée')+'</p><h1 class="question">'+esc(alreadyParticipated?'Vous avez déjà participé à cette édition':editorial.Fin_titre)+'</h1><div class="confirmation-lead">'+paragraphs(alreadyParticipated?'Votre première contribution a bien été conservée. Merci pour votre participation !':editorial.Texte_fin)+'</div><h2 class="fr-h4 fr-mt-4w">Et maintenant ?</h2>';
   const cards=document.createElement('div');cards.className='next-cards';
   ['Etape_1','Etape_2','Etape_3'].forEach((key,i)=>{const lines=String(editorial[key]||'').split(/\n/);const title=lines.shift();const card=document.createElement('article');card.className='next-card';card.innerHTML='<img width="80" height="80" alt="" src="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.0/dist/artwork/pictograms/digital/'+['data-visualization','innovation','mail-send'][i]+'.svg"><div><h3>'+esc(title)+'</h3>'+paragraphs(lines.join('\n'))+'</div>';cards.append(card);});panel.append(cards);
@@ -230,4 +275,3 @@ function render(){
 }
 render();
 </script></body></html>
-```

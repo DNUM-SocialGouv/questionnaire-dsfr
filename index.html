@@ -151,9 +151,18 @@ panel.innerHTML='<img class="end-symbol" alt="" src="data:image/png;base64,iVBOR
 
 // Écriture expérimentale : à utiliser dans un document de test uniquement.
 let submissionInProgress=false;
-function referenceId(v){
-  if(Number.isInteger(v) && v>0) return v;
-  if(Array.isArray(v) && v[0]==='R' && Number.isInteger(v[1])) return v[1];
+function referenceId(v) {
+  if (Number.isInteger(v) && v > 0) return v;
+
+  if (Array.isArray(v) && v[0] === 'R') {
+    return referenceId(v[1]);
+  }
+
+  if (typeof v === 'string') {
+    const match = v.trim().match(/^(?:[A-Za-z_]\w*\[)?(\d+)\]?$/);
+    if (match) return Number(match[1]);
+  }
+
   return null;
 }
 function createdRecordId(result){

@@ -166,7 +166,7 @@ async function submitTest(){
  const missing=rows.findIndex((r,i)=>isRequired(r)&&isEmpty(answers[i]));
  if(missing>=0){alert('Veuillez répondre à la question obligatoire '+(missing+1)+'.');go(missing);return;}
  if(answers.every(isEmpty)){alert('Répondez au moins à une question avant l’envoi.');return;}
- const fields={Annee:campaignYear};
+ const fields=Object.fromEntries(validCodes.map(code=>[code,code==='Q10_commentaire'?'':null]));fields.Annee=campaignYear;
  rows.forEach((r,i)=>{if(isEmpty(answers[i]))return;if(r.Type_reponse==='texte_court'){const value=String(answers[i]).trim();if(value.length>Number(r.Max_caracteres||100))throw new Error('Réponse trop longue');fields[r.Code]=value;}else if(r.Type_reponse==='choix_unique'){const index=choices.indexOf(answers[i]);if(index<0)throw new Error('Réponse invalide');fields[r.Code]=index===4?0:4-index;}else throw new Error('Type de question inconnu');});
  submissionInProgress=true;
  const buttons=[...panel.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);

@@ -173,7 +173,6 @@ async function submitTest(){
  const message=document.createElement('p');message.className='hint';message.setAttribute('role','status');message.textContent='Envoi en cours…';panel.append(message);
  try{
   if(typeof grist==='undefined'||!grist.docApi)throw new Error('Connexion indisponible.');
-  const tables=await grist.docApi.listTables();if(!tables.includes('Resultats'))throw new Error('La table Resultats est absente.');
   await grist.docApi.applyUserActions([['AddRecord','Resultats',null,fields]]);
   go(qs.length+1);
  }catch(error){

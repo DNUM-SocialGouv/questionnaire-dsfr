@@ -184,11 +184,6 @@ async function submitTest(){
   if(!rows || rows.length!==qs.length || rows.some(r=>!referenceId(r.id))){
     alert('Les identifiants des questions Grist ne sont pas disponibles. Aucun envoi effectué.');return;
   }
-  alert(
-  'Référence reçue : ' + JSON.stringify(rows[0]?.Questionnaire)
-  + '\nColonnes disponibles : '
-  + Object.keys(rows[0] || {}).join(', ')
-);
   const questionnaire=referenceId(rows[0].Questionnaire);
   if(!questionnaire || rows.some(r=>referenceId(r.Questionnaire)!==questionnaire)){
     alert('Référence Questionnaire absente ou incohérente. Aucun envoi effectué.');return;

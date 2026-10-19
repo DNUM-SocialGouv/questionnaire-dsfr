@@ -89,8 +89,8 @@ let transitionToken=0;
 function go(n){
   const token=++transitionToken;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isFinalScreen=(n===qs.length || n===qs.length+1);
-  const showScreen=()=>{step=n;render();if(isFinalScreen){requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));}};
+  const shouldStartAtTop=(step===-1 && n===0) || n===qs.length || n===qs.length+1;
+  const showScreen=()=>{step=n;render();if(shouldStartAtTop){requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));}};
   if(reduced){showScreen();return;}
   // Passage en deux temps, sans scroll commandé : la question suivante arrive par fondu.
   panel.style.transition='opacity 160ms ease-in';

@@ -208,7 +208,7 @@ function render(){
   const symbol=panel.querySelector('.welcome-symbol')?.outerHTML||'';
   panel.innerHTML=symbol+'<p class="kicker">Votre avis compte</p><h1 class="question">'+esc(editorial.Intro_titre)+'</h1><div class="intro-copy">'+paragraphs(editorial.Introduction)+'</div>';
   const start=btn('Commencer le questionnaire',()=>go(0));start.disabled=!window.currentQuestions;panel.append(start);
-  const note=document.createElement('p');note.className='participation-note';note.textContent='Une participation par compte et par campagne. Un identifiant technique de votre compte est conservé pour éviter les doublons. Les réponses individuelles sont réservées aux administrateurs du baromètre.';panel.append(note);
+  const note=document.createElement('p');note.className='participation-note';note.textContent='Les réponses sont réservées aux agents des ministères sociaux.';panel.append(note);
  }
  if(step===qs.length){
   panel.innerHTML='<p class="kicker">Dernière étape</p><h1 class="question">Votre avis en un coup d’œil</h1><p>Tout est prêt ! Retrouvez vos réponses ci-dessous, puis envoyez votre contribution.</p><p class="review-help">Vous pouvez encore modifier chaque réponse.</p>';

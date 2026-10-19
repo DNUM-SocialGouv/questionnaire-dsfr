@@ -152,10 +152,20 @@ panel.innerHTML='<img class="end-symbol" alt="" src="data:image/png;base64,iVBOR
 // Écriture expérimentale : à utiliser dans un document de test uniquement.
 let submissionInProgress=false;
 function referenceId(v) {
-  if (Number.isInteger(v) && v > 0) return v;
+  if (Number.isInteger(v) && v > 0) {
+    return v;
+  }
 
   if (Array.isArray(v) && v[0] === 'R') {
     return referenceId(v[1]);
+  }
+
+  if (v && typeof v === 'object') {
+    if (typeof v.tableId === 'string' &&
+        Number.isInteger(v.rowId) &&
+        v.rowId > 0) {
+      return v.rowId;
+    }
   }
 
   if (typeof v === 'string') {

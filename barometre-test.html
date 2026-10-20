@@ -102,6 +102,41 @@ html{overflow-anchor:none}
     forced-color-adjust: auto;
   }
 }
+
+/* Récapitulatif : couleurs des degrés d'accord, adaptées à la palette DSFR.
+   Le texte reste explicite : l'information ne repose pas sur la couleur. */
+.review-answer.review-answer--very-positive {
+  background-color: #b8fec9;
+  color: #18753c;
+  border-left: 4px solid #18753c;
+}
+.review-answer.review-answer--positive {
+  background-color: #e3fdeb;
+  color: #18753c;
+  border-left: 4px solid #18753c;
+}
+.review-answer.review-answer--negative {
+  background-color: #fff4ed;
+  color: #b34000;
+  border-left: 4px solid #b34000;
+}
+.review-answer.review-answer--very-negative {
+  background-color: #ffe9e9;
+  color: #ce0500;
+  border-left: 4px solid #ce0500;
+}
+.review-answer.review-answer--neutral {
+  background-color: #f6f6f6;
+  color: #3a3a3a;
+  border-left: 4px solid #929292;
+}
+@media (forced-colors: active) {
+  .review-answer {
+    color: CanvasText;
+    background-color: Canvas;
+    border: 1px solid CanvasText;
+  }
+}
 </style><script src="https://docs.getgrist.com/grist-plugin-api.js"></script></head><body><header class="fr-header" role="banner"><div class="fr-header__body"><div class="fr-container"><div class="fr-header__body-row"><div class="fr-header__brand"><div class="fr-header__brand-top"><div class="fr-header__logo"><p class="fr-logo">Ministères<br>sociaux</p></div></div></div><div class="fr-header__service"><p class="fr-header__service-title">Secrétariat général</p><p class="fr-header__service-tagline">Direction du numérique</p></div></div></div></div></header><div class="shell"><div id="stepperHost"></div><main class="panel" id="panel" aria-live="polite"></main><footer>Baromètre numérique 2026 — Ministères sociaux</footer></div><script>
 let editorial={"Titre":"Baromètre numérique 2026","Introduction":"Aidez-nous à améliorer votre accompagnement en 2 à 3 minutes.\n\nCe baromètre vise à identifier ce qui fonctionne, repérer les améliorations prioritaires et orienter les actions de 2027.","Texte_fin":"Vos réponses ont bien été enregistrées. Ensemble, améliorons votre quotidien numérique !","Intro_titre":"Votre quotidien numérique nous intéresse !","Fin_titre":"Merci pour votre participation !","Etape_1":"Vos réponses analysées\nNous regroupons les réponses pour identifier ce qui fonctionne et les difficultés rencontrées au quotidien.","Etape_2":"Des priorités pour 2027\nVos retours nous aideront à définir les améliorations à apporter aux outils et à l’accompagnement numérique.","Etape_3":"Un bilan partagé\nUn bilan des résultats et des suites données sera partagé via l’intranet ou la newsletter. La date sera précisée ultérieurement.","Mention_accueil":""};
 let editorialPromise=null;
@@ -217,6 +252,20 @@ const validCodes=Array.from({length:9},(_,i)=>'Q'+String(i+1).padStart(2,'0')).c
 function isRequired(row){return row.Obligatoire===true || row.Obligatoire===1 || row.Obligatoire==='true';}
 function isEmpty(value){return value===null || value===undefined || String(value).trim()==='';}
 function questionIsText(index){return window.currentQuestions?.[index]?.Type_reponse==='texte_court';}
+
+/* Une classe de couleur par modalité ; réponses libres et manquantes neutres. */
+function reviewAnswerTone(index) {
+  if (isEmpty(answers[index])) return 'review-answer--empty';
+  if (questionIsText(index)) return 'review-answer--text';
+  return [
+    'review-answer--very-positive',
+    'review-answer--positive',
+    'review-answer--negative',
+    'review-answer--very-negative',
+    'review-answer--neutral'
+  ][choices.indexOf(answers[index])] || '';
+}
+
 async function submitTest(){
  if(submissionInProgress)return;
  const rows=window.currentQuestions;
@@ -276,7 +325,7 @@ function render(){
  if(step===qs.length){
   panel.innerHTML='<p class="kicker">Dernière étape</p><h1 class="question">Votre avis en un coup d’œil</h1><p>Tout est prêt ! Retrouvez vos réponses ci-dessous, puis envoyez votre contribution.</p><p class="review-help">Vous pouvez encore modifier chaque réponse.</p>';
   const list=document.createElement('ol');list.className='review-list';
-  qs.forEach((q,i)=>{const item=document.createElement('li');item.className='review-item';const top=document.createElement('div');top.className='review-item__top';const num=document.createElement('p');num.className='review-item__number';num.textContent='Question '+(i+1)+' sur '+qs.length;const edit=btn('Modifier',()=>go(i),true);edit.classList.add('review-edit');edit.setAttribute('aria-label','Modifier ma réponse à la question '+(i+1));top.append(num,edit);const title=document.createElement('h2');title.className='review-item__question';title.textContent=q;const answer=document.createElement('div');answer.className='review-answer'+(isEmpty(answers[i])?' review-answer--empty':questionIsText(i)?' review-answer--text':'');answer.textContent=isEmpty(answers[i])?'Sans réponse':answers[i];item.append(top,title,answer);list.append(item);});panel.append(list);
+  qs.forEach((q,i)=>{const item=document.createElement('li');item.className='review-item';const top=document.createElement('div');top.className='review-item__top';const num=document.createElement('p');num.className='review-item__number';num.textContent='Question '+(i+1)+' sur '+qs.length;const edit=btn('Modifier',()=>go(i),true);edit.classList.add('review-edit');edit.setAttribute('aria-label','Modifier ma réponse à la question '+(i+1));top.append(num,edit);const title=document.createElement('h2');title.className='review-item__question';title.textContent=q;const answer=document.createElement('div');answer.className='review-answer '+reviewAnswerTone(i);answer.textContent=isEmpty(answers[i])?'Sans réponse':answers[i];item.append(top,title,answer);list.append(item);});panel.append(list);
   const actions=document.createElement('div');actions.className='actions';actions.append(btn('Envoyer ma contribution',submitTest));panel.append(actions);
  }
   if(step>qs.length){
@@ -295,4 +344,3 @@ function render(){
 }
 render();
 </script></body></html>
-

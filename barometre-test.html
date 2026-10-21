@@ -146,7 +146,7 @@ function surveyModal(title,copy,login=false){
  d.style.cssText='border:0;padding:32px;max-width:560px;width:calc(100% - 40px);box-shadow:0 4px 24px #0003;color:#161616;background:white';
  d.innerHTML='<h1 class="fr-h4" id="surveyDialogTitle">'+esc(title)+'</h1><p id="surveyDialogCopy">'+esc(copy)+'</p><div class="actions"></div>';
  const actions=d.querySelector('.actions');
- if(login){const a=document.createElement('a');a.className='fr-btn';a.textContent='Se connecter';a.target='_top';a.href='https://grist.numerique.gouv.fr/login?next='+encodeURIComponent('/o/dnumdesign/dwg6M3fKf3X5/Barometre-numerique-TEST-simplification-2026/p/7');actions.append(a);}
+ if(login){const a=document.createElement('a');a.className='fr-btn';a.textContent='Se connecter';a.target='_top';a.href='https://grist.numerique.gouv.fr/o/dnumdesign/login?next='+encodeURIComponent('/dwg6M3fKf3X5/Barometre-numerique-TEST-simplification-2026/p/7');actions.append(a);}
  actions.append(btn('Fermer',()=>d.close(),true));document.body.append(d);d.showModal();
 }
 
@@ -306,7 +306,7 @@ window.currentQuestions=null;
 if(typeof grist!=='undefined'){
  grist.ready({requiredAccess:'full'});
  grist.onRecords(async function(records){
-  try{await Promise.all([loadEditorial(),checkExistingParticipation()]);}catch(error){if(String(error.message||error).includes('CONNEXION_REQUISE')){panel.innerHTML='<h1 class="fr-h4">Connectez-vous pour participer</h1><p>Ce questionnaire nécessite une connexion avec votre compte professionnel.</p>';panel.append(btn('Se connecter',()=>surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true)));surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true);}else{panel.innerHTML='<h1 class="fr-h4">Le questionnaire est momentanément indisponible</h1><p>Veuillez réessayer dans quelques instants.</p>';}return;}
+  try{await Promise.all([loadEditorial(),checkExistingParticipation()]);}catch(error){if(/CONNEXION_REQUISE|access|permission|read table|ACL_DENY/i.test(String(error.message||error))){panel.innerHTML='<h1 class="fr-h4">Connectez-vous pour participer</h1><p>Ce questionnaire nécessite une connexion avec votre compte professionnel.</p>';panel.append(btn('Se connecter',()=>surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true)));surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true);}else{panel.innerHTML='<h1 class="fr-h4">Le questionnaire est momentanément indisponible</h1><p>Veuillez réessayer dans quelques instants.</p>';}return;}
   if(alreadyParticipated){step=qs.length+1;render();return;}
   const rows=(records||[]).filter(r=>r&&String(r.Intitule||'').trim()&&Number(r.Annee)===campaignYear).sort((a,b)=>Number(a.Ordre||0)-Number(b.Ordre||0));
   if(!rows.length){window.currentQuestions=null;panel.innerHTML='<h1 class="fr-h4">Aucune question disponible pour cette édition</h1>';return;}

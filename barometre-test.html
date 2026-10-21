@@ -139,6 +139,17 @@ html{overflow-anchor:none}
 }
 </style><script src="https://docs.getgrist.com/grist-plugin-api.js"></script></head><body><header class="fr-header" role="banner"><div class="fr-header__body"><div class="fr-container"><div class="fr-header__body-row"><div class="fr-header__brand"><div class="fr-header__brand-top"><div class="fr-header__logo"><p class="fr-logo">Ministères<br>sociaux</p></div></div></div><div class="fr-header__service"><p class="fr-header__service-title">Secrétariat général</p><p class="fr-header__service-tagline">Direction du numérique</p></div></div></div></div></header><div class="shell"><div id="stepperHost"></div><main class="panel" id="panel" aria-live="polite"></main><footer>Baromètre numérique 2026 — Ministères sociaux</footer></div><script>
 let editorial={"Titre":"Baromètre numérique 2026","Introduction":"Aidez-nous à améliorer votre accompagnement en 2 à 3 minutes.\n\nCe baromètre vise à identifier ce qui fonctionne, repérer les améliorations prioritaires et orienter les actions de 2027.","Texte_fin":"Vos réponses ont bien été enregistrées. Ensemble, améliorons votre quotidien numérique !","Intro_titre":"Votre quotidien numérique nous intéresse !","Fin_titre":"Merci pour votre participation !","Etape_1":"Vos réponses analysées\nNous regroupons les réponses pour identifier ce qui fonctionne et les difficultés rencontrées au quotidien.","Etape_2":"Des priorités pour 2027\nVos retours nous aideront à définir les améliorations à apporter aux outils et à l’accompagnement numérique.","Etape_3":"Un bilan partagé\nUn bilan des résultats et des suites données sera partagé via l’intranet ou la newsletter. La date sera précisée ultérieurement.","Mention_accueil":""};
+
+function surveyModal(title,copy,login=false){
+ document.getElementById('surveyDialog')?.remove();
+ const d=document.createElement('dialog');d.id='surveyDialog';d.setAttribute('aria-labelledby','surveyDialogTitle');d.setAttribute('aria-describedby','surveyDialogCopy');
+ d.style.cssText='border:0;padding:32px;max-width:560px;width:calc(100% - 40px);box-shadow:0 4px 24px #0003;color:#161616;background:white';
+ d.innerHTML='<h1 class="fr-h4" id="surveyDialogTitle">'+esc(title)+'</h1><p id="surveyDialogCopy">'+esc(copy)+'</p><div class="actions"></div>';
+ const actions=d.querySelector('.actions');
+ if(login){const a=document.createElement('a');a.className='fr-btn';a.textContent='Se connecter';a.target='_top';a.href='https://grist.numerique.gouv.fr/login?next='+encodeURIComponent('/o/dnumdesign/dwg6M3fKf3X5/Barometre-numerique-TEST-simplification-2026/p/7');actions.append(a);}
+ actions.append(btn('Fermer',()=>d.close(),true));document.body.append(d);d.showModal();
+}
+
 let editorialPromise=null;
 let alreadyParticipated=false;
 let participationCheckFailed=false;
@@ -285,7 +296,8 @@ async function submitTest(){
   go(qs.length+1);
  }catch(error){
   const refusal=String(error.message||error);
-  if(refusal.includes('DEJA_PARTICIPE')){alreadyParticipated=true;go(qs.length+1);return;}
+  if(refusal.includes('CONNEXION_REQUISE')){surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true);return;}
+  if(refusal.includes('DEJA_PARTICIPE')){alreadyParticipated=true;go(qs.length+1);surveyModal('Vous avez déjà participé','Votre première contribution est conservée. Merci pour votre participation !');return;}
   if(refusal.includes('row create access rules')){message.className='fr-alert fr-alert--info fr-mt-3w';message.setAttribute('role','alert');message.innerHTML='<h2 class="fr-alert__title">Une participation par campagne</h2><p>Votre contribution n’a pas été envoyée. Si vous avez déjà répondu à cette édition, votre première contribution est conservée.</p>';return;}
   message.textContent='L’enregistrement n’a pas pu être confirmé. Ne renvoyez pas vos réponses avant vérification de la table Résultats.';
  }finally{submissionInProgress=false;}
@@ -294,7 +306,7 @@ window.currentQuestions=null;
 if(typeof grist!=='undefined'){
  grist.ready({requiredAccess:'full'});
  grist.onRecords(async function(records){
-  try{await Promise.all([loadEditorial(),checkExistingParticipation()]);}catch(error){panel.innerHTML='<h1 class="fr-h4">Le questionnaire est momentanément indisponible</h1><p>Veuillez réessayer dans quelques instants.</p>';return;}
+  try{await Promise.all([loadEditorial(),checkExistingParticipation()]);}catch(error){if(String(error.message||error).includes('CONNEXION_REQUISE')){panel.innerHTML='<h1 class="fr-h4">Connectez-vous pour participer</h1><p>Ce questionnaire nécessite une connexion avec votre compte professionnel.</p>';panel.append(btn('Se connecter',()=>surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true)));surveyModal('Connectez-vous pour répondre','Utilisez votre compte professionnel pour participer au baromètre.',true);}else{panel.innerHTML='<h1 class="fr-h4">Le questionnaire est momentanément indisponible</h1><p>Veuillez réessayer dans quelques instants.</p>';}return;}
   if(alreadyParticipated){step=qs.length+1;render();return;}
   const rows=(records||[]).filter(r=>r&&String(r.Intitule||'').trim()&&Number(r.Annee)===campaignYear).sort((a,b)=>Number(a.Ordre||0)-Number(b.Ordre||0));
   if(!rows.length){window.currentQuestions=null;panel.innerHTML='<h1 class="fr-h4">Aucune question disponible pour cette édition</h1>';return;}

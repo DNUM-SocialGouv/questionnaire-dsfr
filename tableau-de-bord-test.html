@@ -149,15 +149,18 @@ async function copyQuestionnaireLink(){
 $('copy-questionnaire-link').addEventListener('click',copyQuestionnaireLink);
 $('year').addEventListener('change',()=>{selectedYear=Number($('year').value);visibleComments=10;render();});$('sort').addEventListener('change',render);$('more').addEventListener('click',()=>{visibleComments+=10;renderComments();});
 
-const moderationColumns = [["Exclure_des_resultats",{"type":"Bool","isFormula":false,"label":"Écarter des résultats"}],["Controle_effectue",{"type":"Bool","isFormula":false,"label":"Vérification effectuée"}],["Motif_controle",{"type":"Text","isFormula":false,"label":"Note de vérification"}],["Nb_envois_cle",{"type":"Int","isFormula":true,"label":"Envois avec cette clé","formula":"len(Resultats.lookupRecords(Session_repondant=$Session_repondant)) if $Session_repondant else 0"}],["Reponse_valide",{"type":"Bool","isFormula":true,"label":"Format de réponse valide","formula":"notes = [$Q01, $Q02, $Q03, $Q04, $Q05, $Q06, $Q07, $Q08, $Q09]\ntexte = $Q10_commentaire\nif not isinstance(texte, str) or len(texte) > 500:\n  return False\nif any(v not in (None, \"\") and (type(v) not in (int, float) or v not in (0, 1, 2, 3, 4)) for v in notes):\n  return False\nif all(v in (None, \"\") for v in notes) and not texte.strip():\n  return False\nfor q in Questions.lookupRecords(Annee=$Annee):\n  if q.Code not in (\"Q01\", \"Q02\", \"Q03\", \"Q04\", \"Q05\", \"Q06\", \"Q07\", \"Q08\", \"Q09\", \"Q10_commentaire\"):\n    continue\n  valeur = getattr(rec, q.Code)\n  if q.Obligatoire and (valeur is None or valeur == \"\" or (q.Code == \"Q10_commentaire\" and not str(valeur).strip())):\n    return False\n  if q.Code == \"Q10_commentaire\" and q.Max_caracteres and q.Max_caracteres > 0 and len(texte) > q.Max_caracteres:\n    return False\nreturn True"}]];
+const moderationColumns = [["Exclure_des_resultats",{"type":"Bool","isFormula":false,"label":"Écarter des résultats"}],["Controle_effectue",{"type":"Bool","isFormula":false,"label":"Vérification effectuée"}],["Motif_controle",{"type":"Text","isFormula":false,"label":"Note de vérification"}],["Nb_envois_cle",{"type":"Int","isFormula":true,"label":"Envois avec cette clé","formula":"len(Resultats.lookupRecords(Session_repondant=$Session_repondant)) if $Session_repondant else 0"}],["Reponse_valide",{"type":"Bool","isFormula":true,"label":"Format de réponse valide","formula":"notes = [$Q01, $Q02, $Q03, $Q04, $Q05, $Q06, $Q07, $Q08, $Q09]\ntexte = $Q10_commentaire\nif not isinstance(texte, str) or len(texte) > 500:\n  return False\nif any(v not in (None, \"\") and (type(v) not in (int, float) or v not in (0, 1, 2, 3, 4)) for v in notes):\n  return False\nif all(v in (None, \"\") for v in notes) and not texte.strip():\n  return False\nfor q in Questions.lookupRecords(Annee=$Annee):\n  if q.Code not in (\"Q01\", \"Q02\", \"Q03\", \"Q04\", \"Q05\", \"Q06\", \"Q07\", \"Q08\", \"Q09\", \"Q10_commentaire\"):\n    continue\n  valeur = getattr(rec, q.Code)\n  if q.Obligatoire and (valeur is None or valeur == \"\" or (q.Code == \"Q10_commentaire\" and not str(valeur).strip())):\n    return False\n  if q.Code == \"Q10_commentaire\" and q.Max_caracteres and q.Max_caracteres > 0 and len(texte) > q.Max_caracteres:\n    return False\nreturn True"}],["Empreinte_controle",{"type":"Text","isFormula":false,"label":"Version de réponse vérifiée"}]];
 let allRecords=[],moderationReady=false,reviewLimit=20,reviewBusy=false,loadSequence=0;
 const reviewDrafts=new Map();
+function answerSignature(row){return JSON.stringify([...codes.map(c=>row[c]??null),String(row.Q10_commentaire??'')]);}
+function wasReviewed(row){return row.Controle_effectue===true && row.Empreinte_controle===answerSignature(row);}
 function included(rows){return rows.filter(r=>r.Exclure_des_resultats!==true);}
 function dateMillis(value){if(typeof value==='number')return value*1000;if(typeof value==='string'&&value)return Date.parse(value);return NaN;}
 function contributionSignals(rows){
   const reasons=new Map(rows.map(r=>[r.id,[]]));
   const repeated=new Map();
   for(const r of rows){
+    if(r.Controle_effectue===true && !wasReviewed(r))reasons.get(r.id).push('Réponse modifiée après vérification');
     if(r.Reponse_valide===false)reasons.get(r.id).push('Format à vérifier');
     if(Number(r.Nb_envois_cle)>1)reasons.get(r.id).push('Plusieurs envois avec la même clé');
     const text=normalized(r.Q10_commentaire);
@@ -178,16 +181,16 @@ function renderReview(){
   const rows=allRecords.filter(r=>Number(r.Annee)===selectedYear);
   const reasons=contributionSignals(rows);
   const excluded=rows.filter(r=>r.Exclure_des_resultats===true).length;
-  const pending=rows.filter(r=>reasons.get(r.id).length&&!r.Controle_effectue&&!r.Exclure_des_resultats).length;
+  const pending=rows.filter(r=>reasons.get(r.id).length&&!wasReviewed(r)&&!r.Exclure_des_resultats).length;
   $('quality-summary').textContent=pending?'— '+pending+' à examiner':excluded?'— '+excluded+' écartée'+(excluded>1?'s':''):'';
   $('quality-counts').textContent=plural(pending,'contribution à examiner','contributions à examiner')+' · '+plural(excluded,'participation écartée','participations écartées')+' · '+plural(rows.length,'participation reçue','participations reçues');
   const filter=$('quality-filter').value;
-  const shown=rows.filter(r=>filter==='all'||filter==='excluded'&&r.Exclure_des_resultats===true||filter==='reviewed'&&r.Controle_effectue===true&&!r.Exclure_des_resultats||filter==='pending'&&reasons.get(r.id).length&&!r.Controle_effectue&&!r.Exclure_des_resultats).sort((a,b)=>(reasons.get(b.id).length-reasons.get(a.id).length)||(dateMillis(b.Date_soumission)-dateMillis(a.Date_soumission))||b.id-a.id);
+  const shown=rows.filter(r=>filter==='all'||filter==='excluded'&&r.Exclure_des_resultats===true||filter==='reviewed'&&wasReviewed(r)&&!r.Exclure_des_resultats||filter==='pending'&&reasons.get(r.id).length&&!wasReviewed(r)&&!r.Exclure_des_resultats).sort((a,b)=>(reasons.get(b.id).length-reasons.get(a.id).length)||(dateMillis(b.Date_soumission)-dateMillis(a.Date_soumission))||b.id-a.id);
   $('quality-list').innerHTML=shown.length?shown.slice(0,reviewLimit).map(r=>{
     const id=Number(r.id),time=dateMillis(r.Date_soumission);
     const date=Number.isFinite(time)?new Date(time).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):'Date indisponible';
-    const state=r.Exclure_des_resultats?'Écartée des résultats':r.Controle_effectue?'Vérifiée et conservée':'À examiner';
-    const stateClass=r.Exclure_des_resultats?'quality-tag--excluded':r.Controle_effectue?'quality-tag--kept':'';
+    const state=r.Exclure_des_resultats?'Écartée des résultats':wasReviewed(r)?'Vérifiée et conservée':'À examiner';
+    const stateClass=r.Exclure_des_resultats?'quality-tag--excluded':wasReviewed(r)?'quality-tag--kept':'';
     const tags=reasons.get(r.id).map(s=>'<span class="quality-tag">'+esc(s)+'</span>').join('');
     const answers=codes.map(c=>r[c]===null||r[c]===undefined||r[c]===''?'—':String(r[c])).join(' · ');
     const note=reviewDrafts.has(id)?reviewDrafts.get(id):String(r.Motif_controle||'');
@@ -224,7 +227,7 @@ async function reviewContribution(event){
   reviewBusy=true;$('quality-feedback').textContent='Enregistrement de la vérification…';
   article.querySelectorAll('button,textarea').forEach(e=>e.disabled=true);
   try{
-    await grist.docApi.applyUserActions([['UpdateRecord','Resultats',id,{Exclure_des_resultats:action==='exclude',Controle_effectue:action!=='reset',Motif_controle:note}]]);
+    await grist.docApi.applyUserActions([['UpdateRecord','Resultats',id,{Exclure_des_resultats:action==='exclude',Controle_effectue:action!=='reset',Motif_controle:note,Empreinte_controle:action==='reset'?'':answerSignature(allRecords.find(r=>r.id===id))}]]);
     reviewDrafts.delete(id);await refreshResults();
     $('quality-feedback').textContent=action==='exclude'?'Participation écartée des calculs. Elle reste conservée dans Grist.':action==='keep'?'Participation conservée dans les résultats.':'Participation remise à examiner.';
   }catch(error){$('quality-feedback').textContent='La vérification n’a pas pu être enregistrée. Réessayez dans quelques instants.';}

@@ -1,5 +1,20 @@
 # Baromètre numérique — copie de test simplifiée
 
+## Évolution du 9 novembre 2026 : parcours sans connexion
+
+Le front de test ne demande plus de connexion ProConnect et ne consulte plus le statut de participation d’un compte. La garantie « une réponse par compte et par année » est abandonnée pour ce parcours.
+
+- Ouvert directement sur GitHub Pages, `barometre-test.html` permet de remplir, modifier et relire les réponses en aperçu. Le bandeau indique explicitement qu’aucune réponse n’est transmise ; aucune fausse confirmation d’enregistrement n’est affichée.
+- Intégré dans Grist, le widget lit les questions et les textes de la campagne et écrit une seule ligne dans `Resultats` à l’envoi. Aucun identifiant n’est envoyé par le front.
+- Un refus serveur ne déclenche plus de demande de connexion. Une erreur dont l’issue est inconnue suspend le renvoi pour éviter un doublon.
+
+**La collecte publique reste à configurer et à vérifier dans la copie Grist.** Le front ne modifie pas le partage ni les ACL : le lien Grist peut donc encore réclamer une connexion ou refuser un envoi sans compte.
+
+À la reprise, relever les droits réels, retirer les prérequis de connexion et d’unicité par compte pour les dépôts, conserver les résultats et l’administration privés, puis tester en session sans connexion. Les visiteurs anonymes partagent une identité technique : ne pas utiliser cet identifiant pour bloquer une seconde réponse. Ne pas placer de clé API dans le front public. Garder toutes les anciennes tables et réponses.
+
+Les sections suivantes décrivent l’état historique du prototype ; leurs versions et résultats de tests ne valident pas encore la nouvelle collecte sans connexion.
+
+
 Copie Grist : https://grist.numerique.gouv.fr/o/dnumdesign/dwg6M3fKf3X5/Barometre-numerique-TEST-simplification-2026
 
 ## Structure active

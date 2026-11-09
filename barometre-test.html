@@ -297,7 +297,6 @@ async function submitResponses(){
   submissionSucceeded=true;
   editingFromReview=false;
   go(qs.length);
-  requestAnimationFrame(()=>document.getElementById('submissionConfirmation')?.focus());
  }catch(error){
   const refusal=String(error.message||error);
   const rejected=/CONNEXION_REQUISE|DEJA_PARTICIPE|ACL_DENY|access|permission/i.test(refusal);
@@ -389,6 +388,7 @@ function renderFinal(){
   confirmation.setAttribute('role','status');confirmation.setAttribute('aria-atomic','true');
   confirmation.innerHTML=paragraphs(editorial.Texte_fin||'Votre contribution a bien été enregistrée. Merci !');
   panel.append(confirmation);
+  requestAnimationFrame(()=>confirmation.focus());
  }
  panel.append(renderNextSteps());
  if(!submissionSucceeded){

@@ -137,6 +137,27 @@ html{overflow-anchor:none}
     border: 1px solid CanvasText;
   }
 }
+
+/* Une seule fin de parcours : suites, envoi, réponses, puis confirmation sur place. */
+.final-title{margin-bottom:24px}
+.final-next{margin:0 0 24px;padding:20px;background:#f6f6fe}
+.final-next>h2{margin:0 0 16px}
+.final-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;list-style:none;padding:0;margin:0}
+.final-steps>li{display:flex;gap:10px;margin:0;padding:0;min-width:0}
+.final-steps>li::marker,.final-steps>li::before{content:none;display:none}
+.final-step-number{flex:0 0 24px;height:24px;display:flex;align-items:center;justify-content:center;background:#e3e3fd;color:#000091;font-size:.8rem;font-weight:700}
+.final-steps h3{font-size:.9375rem;line-height:1.4;margin:0 0 6px;color:#161616}
+.final-steps p{font-size:.875rem;line-height:1.5;margin:0;color:#3a3a3a}
+.final-instruction{margin:0 0 16px}
+.final-actions{justify-content:flex-start;margin-top:16px}
+.final-review{margin-top:32px}
+.final-review>h2{margin-bottom:12px}
+.final-review .review-list{gap:12px;margin:0}
+.final-review .review-item{padding:16px}
+.final-review .review-item__top{margin-bottom:8px}
+.final-review .review-item__question{font-size:1rem;margin-bottom:10px}
+#submissionConfirmation:focus{outline:3px solid #0a76f6;outline-offset:3px}
+@media(max-width:650px){.final-steps{grid-template-columns:1fr;gap:16px}.final-next{padding:16px}.final-actions .fr-btn{width:100%;justify-content:center}.final-review{margin-top:24px}}
 </style></head><body><header class="fr-header" role="banner"><div class="fr-header__body"><div class="fr-container"><div class="fr-header__body-row"><div class="fr-header__brand"><div class="fr-header__brand-top"><div class="fr-header__logo"><p class="fr-logo">Ministères<br>sociaux</p></div></div></div><div class="fr-header__service"><p class="fr-header__service-title">Secrétariat général</p><p class="fr-header__service-tagline">Direction du numérique</p></div></div></div></div></header><div class="shell"><div id="stepperHost"></div><main class="panel" id="panel" aria-live="polite"></main><footer>Baromètre numérique 2026 — Ministères sociaux</footer></div><script>
 let editorial={"Titre":"Baromètre numérique 2026","Introduction":"Aidez-nous à améliorer votre accompagnement en 2 à 3 minutes.\n\nCe baromètre vise à identifier ce qui fonctionne, repérer les améliorations prioritaires et orienter les actions de 2027.","Texte_fin":"Vos réponses ont bien été enregistrées. Ensemble, améliorons votre quotidien numérique !","Intro_titre":"Votre quotidien numérique nous intéresse !","Fin_titre":"Merci pour votre participation !","Etape_1":"Vos réponses analysées\nNous regroupons les réponses pour identifier ce qui fonctionne et les difficultés rencontrées au quotidien.","Etape_2":"Des priorités pour 2027\nVos retours nous aideront à définir les améliorations à apporter aux outils et à l’accompagnement numérique.","Etape_3":"Un bilan partagé\nUn bilan des résultats et des suites données sera partagé via l’intranet ou la newsletter. La date sera précisée ultérieurement.","Mention_accueil":""};
 
@@ -145,6 +166,8 @@ let editorial={"Titre":"Baromètre numérique 2026","Introduction":"Aidez-nous �
 const previewMode = window.parent === window;
 let editorialPromise = null;
 let submissionUnconfirmed = false;
+let submissionSucceeded = false;
+let editingFromReview = false;
 
 async function loadEditorial(){if(!editorialPromise)editorialPromise=(async()=>{const t=await grist.docApi.fetchTable("Questionnaires");const i=t.Annee.findIndex(y=>Number(y)===campaignYear);if(i<0)throw new Error("Textes de campagne introuvables.");for(const k of Object.keys(editorial)){if(t[k]&&String(t[k][i]||"").trim())editorial[k]=String(t[k][i]);}document.title=editorial.Titre;})();return editorialPromise;}
 let qs=["Au fil du temps, mon quotidien numérique s'améliore", "Quand j’ai besoin d’assistance ou de formation je sais où trouver les ressources ou les contacts", "Quand j’ai un besoin ou une difficulté avec mes logiciels ou mon matériel, l’assistance est efficace pour m’aider", "Les outils de travail collaboratif (messagerie instantanée, visioconférence, partage de documents...) sont adaptés à mes besoins", "Les applicatifs métiers que j’utilise sont performants et facilitent mon travail", "Je comprends les exigences de sécurité numérique (accès, mots de passe, protections)", "Les ministères sociaux agissent pour un numérique plus responsable (réemploi des équipements, économie d’énergie...)", "Les outils d’IA mis à ma disposition sont efficaces et utiles pour mon travail", "Si j’ai à exploiter des données, je dispose des bons outils pour le faire", "Pour finir : quelle serait LA PRIORITÉ à améliorer dans votre quotidien numérique en 2027 ?"], choices=["Tout à fait d'accord", "Plutôt d'accord", "Plutôt pas d'accord", "Pas du tout d'accord", "Je ne suis pas concerné(e)"];let step=-1;let answers=Array(qs.length).fill(null),panel=document.getElementById('panel');
@@ -153,8 +176,10 @@ function btn(label,handler,secondary=false){let b=document.createElement('button
 // Fondu très discret : aucune navigation ou défilement automatique.
 let transitionToken=0;
 function go(n){
+  if(submissionSucceeded && n<qs.length)return;
   if(n===0 && !window.currentQuestions){alert('Les questions sont en cours de chargement.');return;}
   if(step>=0&&step<qs.length&&n>step&&isRequired(window.currentQuestions?.[step]||{})&&isEmpty(answers[step])){alert('Cette question est obligatoire.');return;}
+  if(editingFromReview && step>=0 && step<qs.length && n>step){n=qs.length;editingFromReview=false;}
   const token=++transitionToken;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const shouldStartAtTop=(step===-1 && n===0) || n===qs.length || n===qs.length+1;
@@ -245,12 +270,12 @@ function submissionNotice(title, copy){
  message.id='submissionNotice';message.className='fr-alert fr-alert--info fr-mt-3w';
  message.setAttribute('role','status');
  message.innerHTML='<h2 class="fr-alert__title">'+esc(title)+'</h2><p>'+esc(copy)+'</p>';
- panel.append(message);
+ (document.getElementById('submissionFeedback')||panel).append(message);
  return message;
 }
 
 async function submitResponses(){
- if(submissionInProgress || submissionUnconfirmed)return;
+ if(submissionInProgress || submissionUnconfirmed || submissionSucceeded)return;
  if(previewMode){
   submissionNotice('Aperçu du questionnaire', 'Vous pouvez remplir et relire le questionnaire. Cet aperçu ne transmet aucune réponse.');
   return;
@@ -269,7 +294,10 @@ async function submitResponses(){
  try{
   if(typeof grist==='undefined'||!grist.docApi)throw new Error('Connexion indisponible.');
   await grist.docApi.applyUserActions([['AddRecord','Resultats',null,fields]]);
-  go(qs.length+1);
+  submissionSucceeded=true;
+  editingFromReview=false;
+  go(qs.length);
+  requestAnimationFrame(()=>document.getElementById('submissionConfirmation')?.focus());
  }catch(error){
   const refusal=String(error.message||error);
   const rejected=/CONNEXION_REQUISE|DEJA_PARTICIPE|ACL_DENY|access|permission/i.test(refusal);
@@ -283,8 +311,7 @@ async function submitResponses(){
  }finally{
   submissionInProgress=false;
   buttons.forEach(b=>b.disabled=false);
-  const submitButton=panel.querySelector('[data-submit]');
-  if(submitButton && submissionUnconfirmed)submitButton.disabled=true;
+  panel.querySelectorAll('[data-submit]').forEach(button=>{button.disabled=submissionUnconfirmed;});
  }
 }
 
@@ -324,35 +351,91 @@ if(previewMode){
 document.addEventListener('keydown',e=>{if(step>=0&&step<qs.length&&!questionIsText(step)&&!e.altKey&&!e.ctrlKey&&!e.metaKey&&/^[1-5]$/.test(e.key)&&!['TEXTAREA','INPUT'].includes(document.activeElement.tagName)){answers[step]=choices[+e.key-1];go(step+1)}});
 
 function paragraphs(value){return String(value||'').split(/\n\s*\n/).filter(s=>s.trim()).map(s=>'<p>'+esc(s).replace(/\n/g,'<br>')+'</p>').join('');}
+function renderNextSteps(){
+ const section=document.createElement('section');
+ section.className='final-next';section.setAttribute('aria-labelledby','nextStepsTitle');
+ section.innerHTML='<h2 id="nextStepsTitle" class="fr-h5">Et après ?</h2>';
+ const steps=document.createElement('ol');steps.className='final-steps';
+ ['Etape_1','Etape_2','Etape_3'].forEach((key,i)=>{
+  const lines=String(editorial[key]||'').split(/\n/);const title=lines.shift();
+  if(!title)return;
+  const item=document.createElement('li');
+  item.innerHTML='<span class="final-step-number" aria-hidden="true">'+(i+1)+'</span><div><h3>'+esc(title)+'</h3>'+paragraphs(lines.join('\n'))+'</div>';
+  steps.append(item);
+ });
+ section.append(steps);return section;
+}
+
+function renderSubmitActions(){
+ const actions=document.createElement('div');actions.className='actions final-actions';
+ if(previewMode){
+  const disabled=btn('Envoi indisponible dans cet aperçu',()=>{});
+  disabled.disabled=true;actions.append(disabled);
+ }else{
+  const submit=btn('Envoyer ma contribution',submitResponses);
+  submit.dataset.submit='true';submit.disabled=submissionUnconfirmed||submissionInProgress;
+  actions.append(submit);
+ }
+ return actions;
+}
+
+function renderFinal(){
+ panel.replaceChildren();
+ panel.innerHTML='<p class="kicker">'+(submissionSucceeded?'Contribution enregistrée':'Dernière étape')+'</p><h1 class="question final-title">'+esc(submissionSucceeded?editorial.Fin_titre:'Votre contribution est prête')+'</h1>';
+ if(submissionSucceeded){
+  const confirmation=document.createElement('div');
+  confirmation.id='submissionConfirmation';confirmation.tabIndex=-1;
+  confirmation.className='fr-alert fr-alert--success fr-mb-4w';
+  confirmation.setAttribute('role','status');confirmation.setAttribute('aria-atomic','true');
+  confirmation.innerHTML=paragraphs(editorial.Texte_fin||'Votre contribution a bien été enregistrée. Merci !');
+  panel.append(confirmation);
+ }
+ panel.append(renderNextSteps());
+ if(!submissionSucceeded){
+  const instruction=document.createElement('p');instruction.className='final-instruction';
+  instruction.textContent=previewMode?'Relisez vos réponses ci-dessous. Cet aperçu ne transmet aucune contribution.':'Vous pouvez encore modifier vos réponses ci-dessous avant d’envoyer votre contribution.';
+  panel.append(instruction,renderSubmitActions());
+  const feedback=document.createElement('div');feedback.id='submissionFeedback';panel.append(feedback);
+  if(submissionUnconfirmed)submissionNotice('Enregistrement à vérifier','Un nouvel envoi est suspendu pour éviter une réponse en double. Vos réponses restent consultables.');
+ }
+ const review=document.createElement('section');review.className='final-review';
+ review.setAttribute('aria-labelledby','reviewTitle');
+ review.innerHTML='<h2 id="reviewTitle" class="fr-h4">Vos réponses</h2>';
+ const list=document.createElement('ol');list.className='review-list';
+ qs.forEach((q,i)=>{
+  const item=document.createElement('li');item.className='review-item';
+  const top=document.createElement('div');top.className='review-item__top';
+  const num=document.createElement('p');num.className='review-item__number';num.textContent='Question '+(i+1)+' sur '+qs.length;top.append(num);
+  if(!submissionSucceeded){
+   const edit=btn('Modifier',()=>{editingFromReview=true;go(i);},true);
+   edit.classList.add('review-edit');edit.setAttribute('aria-label','Modifier ma réponse à la question '+(i+1));top.append(edit);
+  }
+  const title=document.createElement('h3');title.className='review-item__question';title.textContent=q;
+  const answer=document.createElement('div');answer.className='review-answer '+reviewAnswerTone(i);
+  answer.textContent=isEmpty(answers[i])?'Sans réponse':answers[i];
+  item.append(top,title,answer);list.append(item);
+ });
+ review.append(list);panel.append(review);
+ if(!submissionSucceeded)panel.append(renderSubmitActions());
+}
+
 function render(){
- renderLegacy();
- if(step===-1){
-  const symbol=panel.querySelector('.welcome-symbol')?.outerHTML||'';
-  panel.innerHTML=symbol+'<p class="kicker">Votre avis compte</p><h1 class="question">'+esc(editorial.Intro_titre)+'</h1><div class="intro-copy">'+paragraphs(editorial.Introduction)+'</div>';
-  const start=btn('Commencer le questionnaire',()=>go(0));start.disabled=!window.currentQuestions;panel.append(start);
-  if(String(editorial.Mention_accueil||'').trim()){
+ if(step>=qs.length){
+  document.getElementById('stepperHost').replaceChildren();
+  renderFinal();
+ }else{
+  renderLegacy();
+  if(step===-1){
+   const symbol=panel.querySelector('.welcome-symbol')?.outerHTML||'';
+   panel.innerHTML=symbol+'<p class="kicker">Votre avis compte</p><h1 class="question">'+esc(editorial.Intro_titre)+'</h1><div class="intro-copy">'+paragraphs(editorial.Introduction)+'</div>';
+   const start=btn('Commencer le questionnaire',()=>go(0));start.disabled=!window.currentQuestions;panel.append(start);
+   if(String(editorial.Mention_accueil||'').trim()){
     const note=document.createElement('div');note.className='participation-note';note.innerHTML=paragraphs(editorial.Mention_accueil);panel.append(note);
+   }
+  }else if(editingFromReview){
+   const next=panel.querySelector('.actions button:last-child');
+   if(next)next.textContent='Revenir au récapitulatif';
   }
- }
- if(step===qs.length){
-  panel.innerHTML='<p class="kicker">Dernière étape</p><h1 class="question">Votre avis en un coup d’œil</h1><p>'+ (previewMode?'Retrouvez vos réponses ci-dessous. Vous êtes arrivé à la fin de l’aperçu.':'Tout est prêt ! Retrouvez vos réponses ci-dessous, puis envoyez votre contribution.') +'</p><p class="review-help">Vous pouvez encore modifier chaque réponse.</p>';
-  const list=document.createElement('ol');list.className='review-list';
-  qs.forEach((q,i)=>{const item=document.createElement('li');item.className='review-item';const top=document.createElement('div');top.className='review-item__top';const num=document.createElement('p');num.className='review-item__number';num.textContent='Question '+(i+1)+' sur '+qs.length;const edit=btn('Modifier',()=>go(i),true);edit.classList.add('review-edit');edit.setAttribute('aria-label','Modifier ma réponse à la question '+(i+1));top.append(num,edit);const title=document.createElement('h2');title.className='review-item__question';title.textContent=q;const answer=document.createElement('div');answer.className='review-answer '+reviewAnswerTone(i);answer.textContent=isEmpty(answers[i])?'Sans réponse':answers[i];item.append(top,title,answer);list.append(item);});panel.append(list);
-  const actions=document.createElement('div');actions.className='actions';
-  if(previewMode){
-   submissionNotice('Fin de l’aperçu', 'Vous pouvez modifier vos réponses. Cet aperçu ne permet pas de les envoyer.');
-  }else{
-   const submitButton=btn('Envoyer ma contribution',submitResponses);
-   submitButton.dataset.submit='true';submitButton.disabled=submissionUnconfirmed;actions.append(submitButton);
-   if(submissionUnconfirmed)submissionNotice('Enregistrement à vérifier', 'Un nouvel envoi est suspendu pour éviter une réponse en double. Vos réponses restent consultables.');
-  }
-  panel.append(actions);
- }
-  if(step>qs.length){
-  const symbol=panel.querySelector('.end-symbol')?.outerHTML||'';
-  panel.innerHTML=symbol+'<p class="kicker">Contribution enregistrée</p><h1 class="question">'+esc(editorial.Fin_titre)+'</h1><div class="confirmation-lead">'+paragraphs(editorial.Texte_fin)+'</div><h2 class="fr-h4 fr-mt-4w">Et maintenant ?</h2>';
-  const cards=document.createElement('div');cards.className='next-cards';
-  ['Etape_1','Etape_2','Etape_3'].forEach((key,i)=>{const lines=String(editorial[key]||'').split(/\n/);const title=lines.shift();const card=document.createElement('article');card.className='next-card';card.innerHTML='<img width="80" height="80" alt="" src="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.15.0/dist/artwork/pictograms/digital/'+['data-visualization','innovation','mail-send'][i]+'.svg"><div><h3>'+esc(title)+'</h3>'+paragraphs(lines.join('\n'))+'</div>';cards.append(card);});panel.append(cards);
  }
  const label=document.querySelector('.survey-title');if(label)label.textContent=editorial.Titre;
  document.querySelector('footer').textContent=editorial.Titre+' — Ministères sociaux';

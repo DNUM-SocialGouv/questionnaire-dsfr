@@ -74,11 +74,11 @@ html{overflow-anchor:none}
 .survey-counter{margin:0 0 8px;font-size:.9rem}
 .survey-progress__fill{width:0;transition:width 620ms cubic-bezier(.22,1,.36,1);will-change:width}
 .panel{margin-top:0;padding-top:18px;min-height:0}
-.question.survey-question{margin-bottom:18px;line-height:1.32}
+.question.survey-question{font-size:clamp(1.375rem,2.6vw,2rem);line-height:1.4;margin-top:10px;margin-bottom:24px}
 .card-choices{gap:9px}
 .card-option label{padding-block:13px;min-height:54px}
 .actions{margin-top:20px}
-@media(max-width:600px){.shell{padding-top:8px;padding-bottom:35px}#stepperHost{margin-top:4px}.panel{padding-top:14px}.question.survey-question{margin-bottom:15px}.card-option label{padding:12px 14px;min-height:52px}}
+@media(max-width:600px){.shell{padding-top:8px;padding-bottom:35px}#stepperHost{margin-top:4px}.panel{padding-top:14px}.question.survey-question{margin-top:6px;margin-bottom:20px}.card-option label{padding:12px 14px;min-height:52px}}
 @media(prefers-reduced-motion:reduce){.survey-progress__fill{transition:none !important}}
 
 .review-list>li::marker{content:""}.review-list>li::before{display:none!important}.review-list{display:grid;gap:16px;margin:24px 0;padding:0;list-style:none}.review-item{border:1px solid #ddd;padding:20px;background:#fff}.review-item__top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:10px}.review-item__number{font-size:.85rem;color:#666;margin:0}.review-item__question{font-size:1.05rem;line-height:1.45;margin:0 0 14px;font-weight:600}.review-answer{display:inline-block;background:#e3e3fd;color:#000091;padding:8px 12px;font-weight:700;line-height:1.5}.review-answer--empty{background:#f6f6f6;color:#666;font-weight:400}.review-answer--text{display:block;background:#f6f6f6;color:#161616;font-weight:500;white-space:pre-wrap;overflow-wrap:anywhere}.review-edit{font-size:.875rem;min-height:32px;padding:4px 8px}.next-cards{display:grid;gap:16px;margin-top:24px}.next-card{display:flex;align-items:center;gap:24px;border:1px solid #ddd;padding:24px}.next-card img{width:80px;height:80px;flex:0 0 80px}.next-card h3{font-size:1.15rem;margin:0 0 8px;line-height:1.4}.next-card p{margin:0;line-height:1.6}.intro-copy p{margin-bottom:16px}.participation-note{font-size:.875rem;color:#666;border-top:1px solid #ddd;padding-top:20px;margin-top:28px}.review-help{color:#666}.confirmation-lead{font-size:1.125rem}@media(max-width:600px){.review-item{padding:16px}.next-card{padding:16px;gap:16px;align-items:flex-start}.next-card img{width:56px;height:56px;flex-basis:56px}.next-card h3{font-size:1rem}.next-card p{font-size:.94rem}}
